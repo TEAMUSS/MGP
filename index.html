@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Card Game</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-image: url('bg.jpg');
+            background-size: cover;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh; /* Full height of the viewport */
+            width: 100vw; /* Full width of the viewport */
+            overflow: hidden; /* Prevent scrolling */
+            color: white;
+        }
+
+        .game-container {
+            text-align: center;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            display: flex;
+            flex-direction: column;
+            justify-content: center; /* Center items vertically */
+            align-items: center; /* Center items horizontally */
+        }
+
+        .timer {
+            font-size: 20px;
+            margin: 10px 0;
+        }
+
+        .card-container {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr); /* Six cards per row */
+            gap: 5px; /* Reduced gap between cards for closer alignment */
+            margin-top: 20px;
+            padding: 5px; /* Reduced padding */
+            border-radius: 10px;
+            background-color: rgba(0, 0, 0, 0.7); /* Darker semi-transparent background */
+            width: 90%; /* Width of the card container */
+            height: auto; /* Height adjusts based on content */
+            max-height: 80vh; /* Limit the height to fit within the viewport */
+            overflow-y: auto; /* Scroll if content exceeds height */
+        }
+
+        .card {
+            width: 160px; /* Increased width of the card (2x size) */
+            height: 160px; /* Increased height of the card (2x size), making it square */
+            background-image: url('bgc.jpg');
+            background-size: cover;
+            border-radius: 10px;
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.3s;
+            border: 2px solid #fff; /* Thinner frame around each card */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5); /* Added shadow for a raised effect */
+        }
+
+        .card img {
+            width: 100%;
+            height: 100%;
+            border-radius: 10px;
+            display: none; /* Hide the image initially */
+        }
+
+        .card.flipped img {
+            display: block; /* Show the image when flipped */
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg); /* Flip the card */
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px 15px; /* Button padding */
+            background-color: #ff5722;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #e64a19;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>Memory Card Game</h1>
+        <div class="timer" id="timer">Time: 0s</div>
+        <div class="card-container" id="card-container"></div>
+        <button id="restart-button">Restart Game</button>
+    </div>
+
+    <script>
+        const cardImages = [];
+        for (let i = 1; i <= 10; i++) {
+            cardImages.push(`images/${i}.jpg`, `images/${i}.jpg`); // Push each image twice for pairs (from 1 to 10)
+        }
+
+        let firstCard = null;
+        let secondCard = null;
+        let lockBoard = false;
+        let timerInterval;
+        let timeElapsed = 0;
+
+        // Shuffle the cards
+        function shuffle(array) {
+            array.sort(() => Math.random() - 0.5);
+        }
+
+        // Create and display the cards
+        function createCards() {
+            shuffle(cardImages);
+            const cardContainer = document.getElementById('card-container');
+            cardImages.forEach(image => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                // Set the image as the card's front
+                card.innerHTML = `<img src="${image}" alt="${image}">`;
+                card.addEventListener('click', flipCard);
+                cardContainer.appendChild(card);
+            });
+
+            // Show all cards for 5 seconds
+            const allCards = document.querySelectorAll('.card');
+            allCards.forEach(card => {
+                card.classList.add('flipped'); // Show all cards
+            });
+
+            setTimeout(() => {
+                allCards.forEach(card => {
+                    card.classList.remove('flipped'); // Hide cards after 5 seconds
+                });
+                startTimer(); // Start the timer after cards are hidden
+            }, 5000); // 5 seconds to show all cards
+        }
+
+        // Start the timer
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeElapsed++;
+                document.getElementById('timer').innerText = `Time: ${timeElapsed}s`;
+            }, 1000);
+        }
+
+        // Flip the card
+        function flipCard() {
+            if (lockBoard) return;
+            if (this === firstCard) return; // Prevent double clicking the same card
+
+            this.classList.add('flipped');
+
+            if (!firstCard) {
+                firstCard = this;
+                return;
+            }
+
+            secondCard = this;
+            lockBoard = true;
+
+            checkForMatch();
+        }
+
+        // Check for a match
+        function checkForMatch() {
+            const isMatch = firstCard.innerHTML === secondCard.innerHTML;
+
+            if (isMatch) {
+                disableCards();
+            } else {
+                unflipCards();
+            }
+        }
+
+        // Disable matched cards
+        function disableCards() {
+            firstCard.removeEventListener('click', flipCard);
+            secondCard.removeEventListener('click', flipCard);
+            resetBoard();
+
+            // Check if the game is finished
+            if (document.querySelectorAll('.card:not(.flipped)').length === 0) {
+                clearInterval(timerInterval); // Stop the timer
+                setTimeout(() => {
+                    alert(`You Win! Time taken: ${timeElapsed}s`); // Display win message
+                }, 500); // Delay for better UX
+            }
+        }
+
+        // Unflip cards if there's no match
+        function unflipCards() {
+            setTimeout(() => {
+                firstCard.classList.remove('flipped');
+                secondCard.classList.remove('flipped');
+                resetBoard();
+            }, 1500);
+        }
+
+        // Reset the board
+        function resetBoard() {
+            [firstCard, secondCard, lockBoard] = [null, null, false];
+        }
+
+        // Restart the game
+        document.getElementById('restart-button').addEventListener('click', () => {
+            document.getElementById('card-container').innerHTML = '';
+            timeElapsed = 0;
+            document.getElementById('timer').innerText = 'Time: 0s'; // Reset timer display
+            createCards();
+            resetBoard();
+            clearInterval(timerInterval); // Clear existing timer
+        });
+
+        // Initialize the game
+        createCards();
+    </script>
+</body>
+</html>
